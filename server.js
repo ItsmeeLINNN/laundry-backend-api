@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+app.use(cors()); // Ini akan mengizinkan semua domain untuk mengakses backend-mu
 const mysql = require('mysql2')
 
 const app = express();
