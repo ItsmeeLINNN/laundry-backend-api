@@ -166,7 +166,7 @@ const laporanController = require('./controllers/laporanController');
 
 // Dashboard umum (bisa diakses siapa saja yang login)
 app.get('/api/dashboard', laporanController.getDashboard);
-
+app.get('/api/laporan/ringkasan', laporanController.getRingkasan);
 // Laporan detail (bisa tambahkan middleware checkAdmin di sini nantinya)
 app.get('/api/laporan/detail', laporanController.getLaporanDetail);
 
