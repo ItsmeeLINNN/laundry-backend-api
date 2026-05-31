@@ -56,4 +56,4 @@ exports.updateStatus = (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ message: `Status ${jenis_status} berhasil diperbarui!` });
     });
-};x
+};
