@@ -1,11 +1,27 @@
 const express = require('express');
 const cors = require('cors');
-app.use(cors()); // Ini akan mengizinkan semua domain untuk mengakses backend-mu
+
 const mysql = require('mysql2')
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(cors()); // Ini akan mengizinkan semua domain untuk mengakses backend-mu
+
+const authCtrl = require('./controllers/authController');
+const pesananCtrl = require('./controllers/pesananController');
+const laporanCtrl = require('./controllers/laporanController');
+
+// Routes Karyawan
+app.post('/api/karyawan/register', authCtrl.register);
+app.get('/api/karyawan', authCtrl.getKaryawan);
+
+// Routes Transaksi & Status
+app.post('/api/pesanan', pesananCtrl.buatPesanan);
+app.put('/api/pesanan/:id/status', pesananCtrl.updateStatus);
+
+// Routes Laporan
+app.get('/api/laporan/ringkasan', laporanCtrl.getRingkasan);
 
 //testing koneksi ke database cloud railway
 const db = mysql.createPool({
@@ -270,6 +286,17 @@ app.get('/api/dashboard', (req, res) => {
         });
     });
 });
+
+// 1. Import Routes yang baru saja dibuat
+const authRoutes = require('./routes/authRoutes');
+const pesananRoutes = require('./routes/pesananRoutes');
+const laporanRoutes = require('./routes/laporanRoutes');
+
+// 2. Daftarkan Routes ke dalam Express dengan awalan '/api'
+// Sehingga URL akhirnya akan menjadi: https://[domain-railway]/api/karyawan/...
+app.use('/api/karyawan', authRoutes);
+app.use('/api/pesanan', pesananRoutes);
+app.use('/api/laporan', laporanRoutes);
 
 // Ubah angka 3000 menjadi process.env.PORT || 3000
 const PORT = process.env.PORT || 3000;
