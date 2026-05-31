@@ -48,6 +48,9 @@ const jalankanMigrasi = async () => {
             email VARCHAR(100)
         )`);
 
+        // Tambahkan perintah ini ke setup_db.js untuk update tabel pesanan
+        await queryPromise(`ALTER TABLE pesanan ADD COLUMN status_pembayaran VARCHAR(20) DEFAULT 'Belum Lunas'`);
+
         await queryPromise("INSERT INTO settings (id, nama_laundry, alamat, telepon) VALUES (1, 'Spincycle Laundry', 'Jl. Margonda Raya, Depok', '08123456789')");
         console.log("✅ Tabel baru berhasil dibuat.");
 

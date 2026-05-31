@@ -1,18 +1,13 @@
 const db = require('../config/db');
 
 exports.getRingkasan = (req, res) => {
-    // Menghitung total bulan ini secara otomatis
-    const sql = `
-        SELECT 
-            COUNT(id) AS total_transaksi,
-            SUM(total_bayar) AS total_pendapatan,
-            SUM(CASE WHEN is_selesai = 1 THEN 1 ELSE 0 END) AS pesanan_selesai,
-            SUM(CASE WHEN is_selesai = 0 THEN 1 ELSE 0 END) AS pesanan_belum_selesai
-        FROM pesanan 
-        WHERE MONTH(tgl_masuk) = MONTH(CURRENT_DATE()) AND YEAR(tgl_masuk) = YEAR(CURRENT_DATE())
-    `;
+    const { filter } = req.query; // 'harian', 'mingguan', 'bulanan'
+    let interval = filter === 'mingguan' ? '7 DAY' : (filter === 'bulanan' ? '30 DAY' : '1 DAY');
+    
+    const sql = `SELECT COUNT(*) as total_pesanan, SUM(total_harga) as pendapatan 
+                 FROM pesanan WHERE tanggal_masuk >= DATE_SUB(NOW(), INTERVAL ${interval})`;
     db.query(sql, (err, results) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return res.status(500).json({ error: "Gagal ambil laporan" });
         res.json(results[0]);
     });
 };
