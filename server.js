@@ -1,6 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 const mysql = require('mysql2');
+const authRoutes = require('./routes/authRoutes');
+const pesananRoutes = require('./routes/pesananRoutes');
+const laporanController = require('./controllers/laporanController'); // Pastikan ini di atas agar bisa dipakai di route dashboard dan laporan
 
 const app = express();
 app.use(cors());
@@ -134,40 +137,10 @@ app.put('/api/pesanan/:id/status', (req, res) => {
     });
 });
 
-// ==========================================
-// 5. API DASHBOARD STATISTIK
-// ==========================================
-app.get('/api/dashboard', (req, res) => {
-    const queryPendapatan = "SELECT SUM(total_harga) AS pendapatan FROM pesanan WHERE DATE(tanggal_masuk) = CURDATE()";
-    const queryProses = "SELECT COUNT(id) AS proses FROM pesanan WHERE status_pesanan = 'Diproses'";
-    const querySelesai = "SELECT COUNT(id) AS selesai FROM pesanan WHERE status_pesanan = 'Selesai' AND DATE(tanggal_masuk) = CURDATE()";
-    const queryPelanggan = "SELECT COUNT(id) AS pelanggan FROM pelanggan";
-
-    db.query(queryPendapatan, (err, res1) => {
-        db.query(queryProses, (err, res2) => {
-            db.query(querySelesai, (err, res3) => {
-                db.query(queryPelanggan, (err, res4) => {
-                    res.json({
-                        status: 'SUKSES',
-                        data: {
-                            pendapatan: res1[0].pendapatan || 0,
-                            proses: res2[0].proses || 0,
-                            selesai: res3[0].selesai || 0,
-                            pelanggan: res4[0].pelanggan || 0
-                        }
-                    });
-                });
-            });
-        });
-    });
-});
-
 const laporanController = require('./controllers/laporanController');
 
-// Dashboard umum (bisa diakses siapa saja yang login)
 app.get('/api/dashboard', laporanController.getDashboard);
 app.get('/api/laporan/ringkasan', laporanController.getRingkasan);
-// Laporan detail (bisa tambahkan middleware checkAdmin di sini nantinya)
 app.get('/api/laporan/detail', laporanController.getLaporanDetail);
 
 // ==========================================
