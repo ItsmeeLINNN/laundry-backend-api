@@ -2,10 +2,10 @@ const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
 
-// Endpoint untuk mendaftarkan karyawan baru
 router.post('/register', authController.register);
-
-// Endpoint untuk mengambil data dan jadwal karyawan
 router.get('/', authController.getKaryawan);
+
+// Tambahkan baris ini untuk rute login
+router.post('/login', authController.login);
 
 module.exports = router;
