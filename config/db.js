@@ -1,20 +1,25 @@
-const mysql = require('mysql2');
+const mysql = require('mysql'); // atau 'mysql2' tergantung yang kamu install
 
-// Konfigurasi Koneksi ke MySQL Laragon
-const db = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',       
-    password: '',       
-    database: 'nailong_laundry' // <-- NAMA DATABASE SUDAH DIUBAH
+// Menggunakan createPool agar koneksi otomatis di-refresh jika terputus
+const db = mysql.createPool({
+    host: 'kodama.proxy.rlwy.net',
+    user: 'root',
+    password: 'MvHIXgtjhHZQdiujsuNMHDaDSudQppey', // Pastikan password ini sesuai dengan di Railway kamu
+    database: 'railway',
+    port: 11020,
+    waitForConnections: true,
+    connectionLimit: 10,  // Batas antrean koneksi
+    queueLimit: 0
 });
 
-// Eksekusi Koneksi
-db.connect((err) => {
+// Mengetes apakah kolam koneksi berhasil dibuat
+db.getConnection((err, connection) => {
     if (err) {
-        console.error('❌ Gagal koneksi ke MySQL:', err.message);
-        return;
+        console.error('Error menghubungkan ke MySQL Railway:', err.message);
+    } else {
+        console.log('Berhasil terhubung ke MySQL Database (Pool)!');
+        connection.release(); // Kembalikan koneksi ke kolam setelah dites
     }
-    console.log('✅ Sukses terhubung ke database MySQL: nailong_laundry');
 });
 
 module.exports = db;
