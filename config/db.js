@@ -1,4 +1,4 @@
-const mysql = require('mysql'); // atau 'mysql2' tergantung yang kamu install
+const mysql = require('mysql2'); // atau 'mysql2' tergantung yang kamu install
 
 // Menggunakan createPool agar koneksi otomatis di-refresh jika terputus
 const db = mysql.createPool({
