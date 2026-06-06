@@ -48,6 +48,41 @@ app.get('/api/pelanggan', (req, res) => {
     });
 });
 
+// Menambah Pelanggan Baru (POST)
+app.post('/api/pelanggan', (req, res) => {
+    const { name, phone, address } = req.body;
+    if (!name || !phone) return res.status(400).json({ status: 'GAGAL', pesan: 'Nama dan Nomor HP wajib diisi!' });
+
+    const sql = "INSERT INTO pelanggan (name, phone, address) VALUES (?, ?, ?)";
+    db.query(sql, [name, phone, address], (err, result) => {
+        if (err) {
+            if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ status: 'GAGAL', pesan: 'Nomor HP sudah terdaftar!' });
+            return res.status(500).json({ status: 'ERROR', pesan: 'Gagal menyimpan pelanggan baru' });
+        }
+        res.json({ status: 'SUKSES', pesan: 'Pelanggan berhasil ditambahkan!' });
+    });
+});
+
+// Mengubah Data Pelanggan (PUT)
+app.put('/api/pelanggan/:id', (req, res) => {
+    const { id } = req.params;
+    const { name, phone, address } = req.body;
+    const sql = "UPDATE pelanggan SET name = ?, phone = ?, address = ? WHERE id = ?";
+    db.query(sql, [name, phone, address, id], (err, result) => {
+        if (err) return res.status(500).json({ status: 'ERROR', pesan: 'Gagal mengubah data pelanggan' });
+        res.json({ status: 'SUKSES', pesan: 'Data pelanggan berhasil diperbarui!' });
+    });
+});
+
+// Menghapus Pelanggan (DELETE)
+app.delete('/api/pelanggan/:id', (req, res) => {
+    const { id } = req.params;
+    db.query("DELETE FROM pelanggan WHERE id = ?", [id], (err, result) => {
+        if (err) return res.status(500).json({ status: 'ERROR', pesan: 'Gagal menghapus pelanggan' });
+        res.json({ status: 'SUKSES', pesan: 'Pelanggan berhasil dihapus!' });
+    });
+});
+
 // Layanan
 app.get('/api/layanan', (req, res) => {
     db.query("SELECT * FROM layanan ORDER BY category ASC, price ASC", (err, results) => {
