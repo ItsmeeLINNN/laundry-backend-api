@@ -6,9 +6,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ==========================================
 // KONEKSI DATABASE
-// ==========================================
 const db = mysql.createPool({
     host: 'kodama.proxy.rlwy.net',
     user: 'root',
@@ -17,9 +15,7 @@ const db = mysql.createPool({
     port: 11020
 });
 
-// ==========================================
 // IMPOR ROUTES & CONTROLLERS (SATU KALI SAJA)
-// ==========================================
 const authRoutes = require('./routes/authRoutes');
 const pesananRoutes = require('./routes/pesananRoutes');
 const laporanController = require('./controllers/laporanController');
@@ -36,6 +32,57 @@ app.use('/api/pesanan', pesananRoutes);
 app.get('/api/dashboard', laporanController.getDashboard);
 app.get('/api/laporan/ringkasan', laporanController.getRingkasan);
 app.get('/api/laporan/detail', laporanController.getLaporanDetail);
+
+// ==========================================
+// API PENGELUARAN OPERASIONAL (BARU & REALTIME)
+// ==========================================
+// 1. Mengambil semua data pengeluaran
+app.get('/api/pengeluaran', (req, res) => {
+    db.query("SELECT * FROM pengeluaran ORDER BY tanggal DESC, id DESC", (err, results) => {
+        if (err) {
+            console.error('GET /api/pengeluaran error:', err);
+            return res.status(500).json({
+                status: 'ERROR',
+                pesan: 'Gagal mengambil data pengeluaran'
+            });
+        }
+        // Frontend mengharapkan array data langsung
+        res.json(results);
+    });
+});
+
+// 2. Menambah pengeluaran baru
+app.post('/api/pengeluaran', (req, res) => {
+    const { keterangan, nominal, tanggal } = req.body;
+
+    if (!keterangan || !nominal || !tanggal) {
+        return res.status(400).json({
+            status: 'GAGAL',
+            pesan: 'Keterangan, nominal, dan tanggal wajib diisi!'
+        });
+    }
+
+    const sql = "INSERT INTO pengeluaran (keterangan, nominal, tanggal) VALUES (?, ?, ?)";
+    db.query(sql, [keterangan, nominal, tanggal], (err, result) => {
+        if (err) {
+            console.error('POST /api/pengeluaran error:', err);
+            return res.status(500).json({
+                status: 'ERROR',
+                pesan: 'Gagal mencatat pengeluaran baru'
+            });
+        }
+        res.status(201).json({
+            status: 'SUKSES',
+            pesan: 'Pengeluaran berhasil dicatat!',
+            data: {
+                id: result.insertId,
+                keterangan,
+                nominal,
+                tanggal
+            }
+        });
+    });
+});
 
 // ==========================================
 // API MASTER DATA (Sisa Fitur)
