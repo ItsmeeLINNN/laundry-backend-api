@@ -13,6 +13,7 @@ const jalankanMigrasi = async () => {
         await queryPromise("DROP TABLE IF EXISTS pesanan");
         await queryPromise("DROP TABLE IF EXISTS pelanggan");
         await queryPromise("DROP TABLE IF EXISTS settings");
+        await queryPromise("DROP TABLE IF EXISTS pengeluaran"); // PERBAIKAN: Hapus tabel pengeluaran lama jika ada
         console.log("✅ Tabel-tabel lama berhasil dihapus.");
 
         // 3. Buat tabel baru
@@ -46,6 +47,15 @@ const jalankanMigrasi = async () => {
             alamat VARCHAR(255),
             telepon VARCHAR(20),
             email VARCHAR(100)
+        )`);
+
+        // PERBAIKAN: Skema pembuatan tabel pengeluaran baru operasional laundry
+        await queryPromise(`CREATE TABLE pengeluaran (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            keterangan VARCHAR(255) NOT NULL,
+            nominal DECIMAL(10,2) NOT NULL,
+            tanggal DATE NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`);
 
         // Tambahkan perintah ini ke setup_db.js untuk update tabel pesanan
