@@ -8,12 +8,12 @@ const jalankanMigrasi = async () => {
         await queryPromise("SET FOREIGN_KEY_CHECKS = 0");
         console.log("🔒 Foreign Key checks disabled.");
 
-        // 2. Hapus tabel (satu per satu untuk menghindari error)
+        // 2. Hapus tabel lama
         await queryPromise("DROP TABLE IF EXISTS detail_pesanan");
         await queryPromise("DROP TABLE IF EXISTS pesanan");
         await queryPromise("DROP TABLE IF EXISTS pelanggan");
         await queryPromise("DROP TABLE IF EXISTS settings");
-        await queryPromise("DROP TABLE IF EXISTS pengeluaran"); // PERBAIKAN: Hapus tabel pengeluaran lama jika ada
+        await queryPromise("DROP TABLE IF EXISTS pengeluaran"); 
         console.log("✅ Tabel-tabel lama berhasil dihapus.");
 
         // 3. Buat tabel baru
@@ -27,10 +27,12 @@ const jalankanMigrasi = async () => {
             tgl_expired_member DATE NULL
         )`);
 
+        // PERBAIKAN: Menyisipkan kolom layanan_id ke dalam schema utama tabel pesanan
         await queryPromise(`CREATE TABLE pesanan (
             id INT AUTO_INCREMENT PRIMARY KEY,
             pelanggan_id INT NOT NULL,
             paket_id INT NOT NULL,
+            layanan_id INT NULL,
             berat DECIMAL(5,2) NOT NULL,
             metode_pengambilan VARCHAR(50) NOT NULL,
             jarak_km DECIMAL(5,2) DEFAULT 0,
@@ -49,7 +51,6 @@ const jalankanMigrasi = async () => {
             email VARCHAR(100)
         )`);
 
-        // PERBAIKAN: Skema pembuatan tabel pengeluaran baru operasional laundry
         await queryPromise(`CREATE TABLE pengeluaran (
             id INT AUTO_INCREMENT PRIMARY KEY,
             keterangan VARCHAR(255) NOT NULL,
@@ -58,7 +59,6 @@ const jalankanMigrasi = async () => {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`);
 
-        // Tambahkan perintah ini ke setup_db.js untuk update tabel pesanan
         await queryPromise(`ALTER TABLE pesanan ADD COLUMN status_pembayaran VARCHAR(20) DEFAULT 'Belum Lunas'`);
 
         await queryPromise("INSERT INTO settings (id, nama_laundry, alamat, telepon) VALUES (1, 'Spincycle Laundry', 'Jl. Margonda Raya, Depok', '08123456789')");
@@ -75,7 +75,6 @@ const jalankanMigrasi = async () => {
     }
 };
 
-// Helper untuk mengubah db.query menjadi promise
 function queryPromise(sql) {
     return new Promise((resolve, reject) => {
         db.query(sql, (err, res) => {
