@@ -1,252 +1,191 @@
--- phpMyAdmin SQL Dump
--- version 5.2.3
--- https://www.phpmyadmin.net/
---
--- Host: localhost:3306
--- Waktu pembuatan: 22 Bulan Mei 2026 pada 12.34
--- Versi server: 8.4.3
--- Versi PHP: 8.3.30
-
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
-START TRANSACTION;
 SET time_zone = "+00:00";
+SET FOREIGN_KEY_CHECKS = 0;
 
+DROP TABLE IF EXISTS role_access_control;
+DROP TABLE IF EXISTS detail_pesanan;
+DROP TABLE IF EXISTS pesanan;
+DROP TABLE IF EXISTS pengeluaran;
+DROP TABLE IF EXISTS settings;
+DROP TABLE IF EXISTS layanan;
+DROP TABLE IF EXISTS pelanggan;
+DROP TABLE IF EXISTS karyawan;
 
-/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!40101 SET NAMES utf8mb4 */;
+SET FOREIGN_KEY_CHECKS = 1;
 
---
--- Basis data: `nailong_laundry`
---
-
--- --------------------------------------------------------
-
---
--- Struktur dari tabel `detail_pesanan`
---
-
-CREATE TABLE `detail_pesanan` (
-  `id` int NOT NULL,
-  `pesanan_id` int NOT NULL,
-  `layanan_id` int NOT NULL,
-  `nama_layanan_snapshot` varchar(100) NOT NULL,
-  `kategori_snapshot` varchar(50) DEFAULT NULL,
-  `qty` decimal(5,2) NOT NULL,
-  `harga_satuan_snapshot` int NOT NULL,
-  `subtotal` int NOT NULL
+CREATE TABLE karyawan (
+  id INT NOT NULL AUTO_INCREMENT,
+  nama VARCHAR(100) NOT NULL,
+  username VARCHAR(50) NOT NULL,
+  password VARCHAR(255) NOT NULL,
+  no_telepon VARCHAR(20) DEFAULT NULL,
+  jabatan ENUM('Admin','Kasir','Karyawan','Kurir') NOT NULL DEFAULT 'Karyawan',
+  hari_kerja VARCHAR(50) DEFAULT NULL,
+  jam_masuk TIME DEFAULT NULL,
+  jam_pulang TIME DEFAULT NULL,
+  status_aktif TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
---
--- Dumping data untuk tabel `detail_pesanan`
---
-
-INSERT INTO `detail_pesanan` (`id`, `pesanan_id`, `layanan_id`, `nama_layanan_snapshot`, `kategori_snapshot`, `qty`, `harga_satuan_snapshot`, `subtotal`) VALUES
-(5, 2, 2, 'Cuci Kering + Lipat', 'Kiloan', 2.00, 5000, 10000),
-(6, 2, 3, 'Selimut', 'Satuan', 1.00, 7000, 7000),
-(7, 2, 4, 'Sprei', 'Satuan', 1.00, 7000, 7000),
-(8, 3, 1, 'Cuci Setrika', 'Kiloan', 3.00, 6000, 18000),
-(9, 4, 2, 'Cuci Kering + Lipat', 'Kiloan', 2.00, 5000, 10000);
-
--- --------------------------------------------------------
-
---
--- Struktur dari tabel `layanan`
---
-
-CREATE TABLE `layanan` (
-  `id` int NOT NULL,
-  `service_name` varchar(100) NOT NULL,
-  `category` enum('Kiloan','Satuan') NOT NULL,
-  `price` int NOT NULL,
-  `unit` varchar(20) NOT NULL,
-  `estimated_days` int DEFAULT '1'
+CREATE TABLE pelanggan (
+  id INT NOT NULL AUTO_INCREMENT,
+  name VARCHAR(100) NOT NULL,
+  phone VARCHAR(20) NOT NULL,
+  email VARCHAR(100) DEFAULT NULL,
+  address VARCHAR(255) DEFAULT NULL,
+  status_member VARCHAR(20) DEFAULT 'Non-Member',
+  tgl_aktif_member DATE DEFAULT NULL,
+  tgl_expired_member DATE DEFAULT NULL,
+  created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY phone (phone)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
---
--- Dumping data untuk tabel `layanan`
---
-
-INSERT INTO `layanan` (`id`, `service_name`, `category`, `price`, `unit`, `estimated_days`) VALUES
-(1, 'Cuci Setrika', 'Kiloan', 6000, 'Kg', 2),
-(2, 'Cuci Kering + Lipat', 'Kiloan', 5000, 'Kg', 1),
-(3, 'Selimut', 'Satuan', 7000, 'Pcs', 3),
-(4, 'Sprei', 'Satuan', 7000, 'Pcs', 3),
-(5, 'Tas', 'Satuan', 10000, 'Pcs', 4),
-(6, 'Sepatu', 'Satuan', 25000, 'Pasang', 5),
-(8, 'Cuci Mobil', 'Satuan', 80000, 'Pcs', 1);
-
--- --------------------------------------------------------
-
---
--- Struktur dari tabel `pelanggan`
---
-
-CREATE TABLE `pelanggan` (
-  `id` int NOT NULL,
-  `name` varchar(100) NOT NULL,
-  `phone` varchar(20) NOT NULL,
-  `email` varchar(100) DEFAULT NULL,
-  `address` text,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE layanan (
+  id INT NOT NULL AUTO_INCREMENT,
+  service_name VARCHAR(100) NOT NULL,
+  category ENUM('Kiloan','Satuan') NOT NULL,
+  price INT NOT NULL,
+  unit VARCHAR(20) NOT NULL,
+  estimated_days INT DEFAULT 1,
+  PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
---
--- Dumping data untuk tabel `pelanggan`
---
-
-INSERT INTO `pelanggan` (`id`, `name`, `phone`, `email`, `address`, `created_at`) VALUES
-(3, 'LINNn', '2222', NULL, 'Bekasi', '2026-05-18 02:46:53'),
-(4, 'Joko', '1122', NULL, 'Solo', '2026-05-18 03:02:29');
-
--- --------------------------------------------------------
-
---
--- Struktur dari tabel `pesanan`
---
-
-CREATE TABLE `pesanan` (
-  `id` int NOT NULL,
-  `nomor_nota` varchar(20) NOT NULL,
-  `pelanggan_id` int NOT NULL,
-  `kasir_id` int NOT NULL,
-  `tanggal_order` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `estimasi_selesai` date DEFAULT NULL,
-  `status` enum('Proses','Selesai') DEFAULT 'Proses',
-  `metode_pembayaran` enum('Tunai','QRIS','Transfer') NOT NULL,
-  `total_tagihan` int NOT NULL,
-  `uang_diterima` int NOT NULL,
-  `uang_kembalian` int NOT NULL
+CREATE TABLE pesanan (
+  id INT NOT NULL AUTO_INCREMENT,
+  pelanggan_id INT NOT NULL,
+  paket_id INT NOT NULL,
+  layanan_id INT DEFAULT NULL,
+  berat DECIMAL(8,2) NOT NULL DEFAULT 1.00,
+  metode_pengambilan VARCHAR(50) NOT NULL DEFAULT 'ambil_sendiri',
+  jarak_km DECIMAL(8,2) DEFAULT 0.00,
+  ongkir INT DEFAULT 0,
+  total_harga INT NOT NULL,
+  status_pesanan ENUM('Diproses','Selesai','Diambil') NOT NULL DEFAULT 'Diproses',
+  status_pembayaran ENUM('Belum Lunas','Lunas') NOT NULL DEFAULT 'Belum Lunas',
+  metode_pembayaran ENUM('Tunai','QRIS','Transfer') DEFAULT NULL,
+  uang_diterima INT NOT NULL DEFAULT 0,
+  uang_kembalian INT NOT NULL DEFAULT 0,
+  kasir_id INT DEFAULT NULL,
+  catatan TEXT DEFAULT NULL,
+  tanggal_masuk TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY pelanggan_id (pelanggan_id),
+  KEY layanan_id (layanan_id),
+  KEY kasir_id (kasir_id),
+  CONSTRAINT pesanan_pelanggan_fk FOREIGN KEY (pelanggan_id) REFERENCES pelanggan (id) ON DELETE CASCADE,
+  CONSTRAINT pesanan_layanan_fk FOREIGN KEY (layanan_id) REFERENCES layanan (id) ON DELETE SET NULL,
+  CONSTRAINT pesanan_kasir_fk FOREIGN KEY (kasir_id) REFERENCES karyawan (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
---
--- Dumping data untuk tabel `pesanan`
---
-
-INSERT INTO `pesanan` (`id`, `nomor_nota`, `pelanggan_id`, `kasir_id`, `tanggal_order`, `estimasi_selesai`, `status`, `metode_pembayaran`, `total_tagihan`, `uang_diterima`, `uang_kembalian`) VALUES
-(2, 'ORD-1779073295', 3, 1, '2026-05-18 03:01:35', NULL, 'Selesai', 'Tunai', 24000, 24000, 0),
-(3, 'ORD-1779073379', 4, 1, '2026-05-18 03:02:59', NULL, 'Selesai', 'Tunai', 18000, 18000, 0),
-(4, 'ORD-1779195814', 4, 1, '2026-05-19 13:03:34', NULL, 'Proses', 'Tunai', 10000, 100000, 90000);
-
--- --------------------------------------------------------
-
---
--- Struktur dari tabel `users`
---
-
-CREATE TABLE `users` (
-  `id` int NOT NULL,
-  `username` varchar(50) NOT NULL,
-  `password` varchar(255) NOT NULL,
-  `fullname` varchar(100) NOT NULL,
-  `phone` varchar(20) DEFAULT NULL,
-  `role` enum('Admin','Karyawan') DEFAULT 'Admin',
-  `is_active` enum('true','false') DEFAULT 'true',
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE detail_pesanan (
+  id INT NOT NULL AUTO_INCREMENT,
+  pesanan_id INT NOT NULL,
+  layanan_id INT NOT NULL,
+  nama_layanan_snapshot VARCHAR(100) NOT NULL,
+  kategori_snapshot VARCHAR(50) DEFAULT NULL,
+  unit_snapshot VARCHAR(20) DEFAULT NULL,
+  qty DECIMAL(8,2) NOT NULL,
+  harga_satuan_snapshot INT NOT NULL,
+  subtotal INT NOT NULL,
+  PRIMARY KEY (id),
+  KEY pesanan_id (pesanan_id),
+  KEY layanan_id (layanan_id),
+  CONSTRAINT detail_pesanan_pesanan_fk FOREIGN KEY (pesanan_id) REFERENCES pesanan (id) ON DELETE CASCADE,
+  CONSTRAINT detail_pesanan_layanan_fk FOREIGN KEY (layanan_id) REFERENCES layanan (id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
---
--- Dumping data untuk tabel `users`
---
+CREATE TABLE role_access_control (
+  id INT NOT NULL AUTO_INCREMENT,
+  role ENUM('Admin','Kasir','Karyawan','Kurir') NOT NULL,
+  page_key VARCHAR(100) NOT NULL,
+  page_name VARCHAR(100) NOT NULL,
+  can_access TINYINT(1) NOT NULL DEFAULT 0,
+  updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY role_page_unique (role, page_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-INSERT INTO `users` (`id`, `username`, `password`, `fullname`, `phone`, `role`, `is_active`, `created_at`) VALUES
-(1, 'andrakubaik', '123456', 'Andra Kubaik Achmad', '+62 812-3456-7890', 'Admin', 'true', '2026-05-17 17:07:00');
+CREATE TABLE settings (
+  id INT NOT NULL DEFAULT 1,
+  nama_laundry VARCHAR(100) DEFAULT NULL,
+  alamat VARCHAR(255) DEFAULT NULL,
+  telepon VARCHAR(20) DEFAULT NULL,
+  email VARCHAR(100) DEFAULT NULL,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
---
--- Indeks untuk tabel yang dibuang
---
+CREATE TABLE pengeluaran (
+  id INT NOT NULL AUTO_INCREMENT,
+  keterangan VARCHAR(255) NOT NULL,
+  nominal DECIMAL(12,2) NOT NULL,
+  tanggal DATE NOT NULL,
+  created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
---
--- Indeks untuk tabel `detail_pesanan`
---
-ALTER TABLE `detail_pesanan`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `pesanan_id` (`pesanan_id`),
-  ADD KEY `layanan_id` (`layanan_id`);
+INSERT INTO karyawan (nama, username, password, no_telepon, jabatan, hari_kerja, jam_masuk, jam_pulang, status_aktif) VALUES
+('Admin Spincycle', 'admin', '$2b$10$OY6KmhPLvS66fQw0sxZTieji3xlBAUL23h.fGqVFqk23Ob/RfKD3e', '081234567890', 'Admin', 'Senin Minggu', '08:00:00', '20:00:00', 1);
 
---
--- Indeks untuk tabel `layanan`
---
-ALTER TABLE `layanan`
-  ADD PRIMARY KEY (`id`);
+INSERT INTO pelanggan (name, phone, address) VALUES
+('Joko', '081111111111', 'Solo'),
+('Linn', '082222222222', 'Bekasi');
 
---
--- Indeks untuk tabel `pelanggan`
---
-ALTER TABLE `pelanggan`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `phone` (`phone`);
+INSERT INTO layanan (service_name, category, price, unit, estimated_days) VALUES
+('Cuci Setrika', 'Kiloan', 6000, 'Kg', 2),
+('Cuci Kering Lipat', 'Kiloan', 5000, 'Kg', 1),
+('Selimut', 'Satuan', 7000, 'Pcs', 3),
+('Sprei', 'Satuan', 7000, 'Pcs', 3),
+('Tas', 'Satuan', 10000, 'Pcs', 4),
+('Sepatu', 'Satuan', 25000, 'Pasang', 5);
 
---
--- Indeks untuk tabel `pesanan`
---
-ALTER TABLE `pesanan`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `nomor_nota` (`nomor_nota`),
-  ADD KEY `pelanggan_id` (`pelanggan_id`),
-  ADD KEY `kasir_id` (`kasir_id`);
+INSERT INTO settings (id, nama_laundry, alamat, telepon, email) VALUES
+(1, 'Spincycle Laundry', 'Jl. Margonda Raya, Depok', '08123456789', NULL);
 
---
--- Indeks untuk tabel `users`
---
-ALTER TABLE `users`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `username` (`username`);
-
---
--- AUTO_INCREMENT untuk tabel yang dibuang
---
-
---
--- AUTO_INCREMENT untuk tabel `detail_pesanan`
---
-ALTER TABLE `detail_pesanan`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
-
---
--- AUTO_INCREMENT untuk tabel `layanan`
---
-ALTER TABLE `layanan`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
-
---
--- AUTO_INCREMENT untuk tabel `pelanggan`
---
-ALTER TABLE `pelanggan`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
-
---
--- AUTO_INCREMENT untuk tabel `pesanan`
---
-ALTER TABLE `pesanan`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
-
---
--- AUTO_INCREMENT untuk tabel `users`
---
-ALTER TABLE `users`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
-
---
--- Ketidakleluasaan untuk tabel pelimpahan (Dumped Tables)
---
-
---
--- Ketidakleluasaan untuk tabel `detail_pesanan`
---
-ALTER TABLE `detail_pesanan`
-  ADD CONSTRAINT `detail_pesanan_ibfk_1` FOREIGN KEY (`pesanan_id`) REFERENCES `pesanan` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `detail_pesanan_ibfk_2` FOREIGN KEY (`layanan_id`) REFERENCES `layanan` (`id`) ON DELETE CASCADE;
-
---
--- Ketidakleluasaan untuk tabel `pesanan`
---
-ALTER TABLE `pesanan`
-  ADD CONSTRAINT `pesanan_ibfk_1` FOREIGN KEY (`pelanggan_id`) REFERENCES `pelanggan` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `pesanan_ibfk_2` FOREIGN KEY (`kasir_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-COMMIT;
-
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+INSERT INTO role_access_control (role, page_key, page_name, can_access) VALUES
+('Admin','dashboard.html','Dashboard',1),
+('Admin','transaksi_baru.html','Transaksi Baru',1),
+('Admin','ringkasan_pesanan.html','Ringkasan Pesanan',1),
+('Admin','list_order.html','Daftar Pesanan',1),
+('Admin','pembayaran.html','Pembayaran',1),
+('Admin','pelanggan_tambah.html','Pelanggan',1),
+('Admin','layanan.html','Layanan',1),
+('Admin','laporan.html','Laporan Keuangan',1),
+('Admin','profile.html','Profil',1),
+('Admin','karyawan.html','Manajemen Karyawan',1),
+('Admin','access_control.html','Kontrol Akses',1),
+('Kasir','dashboard.html','Dashboard',1),
+('Kasir','transaksi_baru.html','Transaksi Baru',1),
+('Kasir','ringkasan_pesanan.html','Ringkasan Pesanan',1),
+('Kasir','list_order.html','Daftar Pesanan',1),
+('Kasir','pembayaran.html','Pembayaran',1),
+('Kasir','pelanggan_tambah.html','Pelanggan',1),
+('Kasir','layanan.html','Layanan',1),
+('Kasir','laporan.html','Laporan Keuangan',0),
+('Kasir','profile.html','Profil',1),
+('Kasir','karyawan.html','Manajemen Karyawan',0),
+('Kasir','access_control.html','Kontrol Akses',0),
+('Karyawan','dashboard.html','Dashboard',1),
+('Karyawan','transaksi_baru.html','Transaksi Baru',1),
+('Karyawan','ringkasan_pesanan.html','Ringkasan Pesanan',1),
+('Karyawan','list_order.html','Daftar Pesanan',1),
+('Karyawan','pembayaran.html','Pembayaran',0),
+('Karyawan','pelanggan_tambah.html','Pelanggan',1),
+('Karyawan','layanan.html','Layanan',1),
+('Karyawan','laporan.html','Laporan Keuangan',0),
+('Karyawan','profile.html','Profil',1),
+('Karyawan','karyawan.html','Manajemen Karyawan',0),
+('Karyawan','access_control.html','Kontrol Akses',0),
+('Kurir','dashboard.html','Dashboard',1),
+('Kurir','transaksi_baru.html','Transaksi Baru',0),
+('Kurir','ringkasan_pesanan.html','Ringkasan Pesanan',0),
+('Kurir','list_order.html','Daftar Pesanan',1),
+('Kurir','pembayaran.html','Pembayaran',0),
+('Kurir','pelanggan_tambah.html','Pelanggan',0),
+('Kurir','layanan.html','Layanan',0),
+('Kurir','laporan.html','Laporan Keuangan',0),
+('Kurir','profile.html','Profil',1),
+('Kurir','karyawan.html','Manajemen Karyawan',0),
+('Kurir','access_control.html','Kontrol Akses',0);

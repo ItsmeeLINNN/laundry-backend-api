@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { signPayload } = require('../utils/jwt');
 
 let bcrypt;
 
@@ -21,7 +22,7 @@ function validUsername(value) {
 }
 
 function validJabatan(value) {
-    return ['Admin', 'Kasir', 'Kurir'].includes(value);
+    return ['Admin', 'Kasir', 'Karyawan', 'Kurir'].includes(value);
 }
 
 function validTime(value) {
@@ -240,15 +241,25 @@ exports.login = (req, res) => {
                 });
             }
 
+            const token = signPayload({
+                id: user.id,
+                nama: user.nama,
+                username: user.username,
+                jabatan: user.jabatan,
+                role: user.jabatan
+            });
+
             res.json({
                 status: 'SUKSES',
                 message: 'Login berhasil.',
+                token,
                 data: {
                     id: user.id,
                     nama: user.nama,
                     username: user.username,
                     jabatan: user.jabatan,
-                    role: user.jabatan
+                    role: user.jabatan,
+                    token
                 }
             });
         } catch (error) {

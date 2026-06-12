@@ -1,25 +1,26 @@
-const mysql = require('mysql2'); // atau 'mysql2' tergantung yang kamu install
+require('dotenv').config({ quiet: true });
 
-// Menggunakan createPool agar koneksi otomatis di-refresh jika terputus
+const mysql = require('mysql2');
+
 const db = mysql.createPool({
-    host: 'kodama.proxy.rlwy.net',
-    user: 'root',
-    password: 'MvHIXgtjhHZQdiujsuNMHDaDSudQppey', // Pastikan password ini sesuai dengan di Railway kamu
-    database: 'railway',
-    port: 11020,
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'nailong_laundry',
+    port: Number(process.env.DB_PORT || 3306),
     waitForConnections: true,
-    connectionLimit: 10,  // Batas antrean koneksi
+    connectionLimit: Number(process.env.DB_CONNECTION_LIMIT || 10),
     queueLimit: 0
 });
 
-// Mengetes apakah kolam koneksi berhasil dibuat
 db.getConnection((err, connection) => {
     if (err) {
-        console.error('Error menghubungkan ke MySQL Railway:', err.message);
-    } else {
-        console.log('Berhasil terhubung ke MySQL Database (Pool)!');
-        connection.release(); // Kembalikan koneksi ke kolam setelah dites
+        console.error('Gagal terhubung ke MySQL:', err.message);
+        return;
     }
+
+    console.log('Berhasil terhubung ke MySQL Database (Pool).');
+    connection.release();
 });
 
 module.exports = db;
