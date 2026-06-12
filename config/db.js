@@ -2,24 +2,46 @@ require('dotenv').config({ quiet: true });
 
 const mysql = require('mysql2');
 
-const requiredEnv = ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME', 'DB_PORT'];
+function readEnv(primaryName, fallbackName) {
+    return process.env[primaryName] || process.env[fallbackName] || '';
+}
 
-requiredEnv.forEach((name) => {
-    if (!process.env[name]) {
-        throw new Error(`Environment ${name} wajib diisi untuk koneksi database.`);
-    }
-});
-
-const db = mysql.createPool({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    port: Number(process.env.DB_PORT),
+const dbConfig = {
+    host: readEnv('DB_HOST', 'MYSQLHOST'),
+    user: readEnv('DB_USER', 'MYSQLUSER'),
+    password: readEnv('DB_PASSWORD', 'MYSQLPASSWORD'),
+    database: readEnv('DB_NAME', 'MYSQLDATABASE'),
+    port: Number(readEnv('DB_PORT', 'MYSQLPORT')),
     waitForConnections: true,
     connectionLimit: Number(process.env.DB_CONNECTION_LIMIT || 10),
     queueLimit: 0
+};
+
+const requiredFields = [
+    ['host', 'DB_HOST atau MYSQLHOST wajib diisi di Railway Backend Variables.'],
+    ['user', 'DB_USER atau MYSQLUSER wajib diisi di Railway Backend Variables.'],
+    ['database', 'DB_NAME atau MYSQLDATABASE wajib diisi di Railway Backend Variables.']
+];
+
+requiredFields.forEach(([field, message]) => {
+    if (!dbConfig[field]) {
+        throw new Error(message);
+    }
 });
+
+if (!dbConfig.password) {
+    throw new Error('DB_PASSWORD wajib diisi di Railway Backend Variables.');
+}
+
+if (!Number.isInteger(dbConfig.port) || dbConfig.port <= 0) {
+    throw new Error('DB_PORT atau MYSQLPORT wajib berisi angka port database yang valid.');
+}
+
+if (!Number.isInteger(dbConfig.connectionLimit) || dbConfig.connectionLimit <= 0) {
+    dbConfig.connectionLimit = 10;
+}
+
+const db = mysql.createPool(dbConfig);
 
 db.getConnection((err, connection) => {
     if (err) {

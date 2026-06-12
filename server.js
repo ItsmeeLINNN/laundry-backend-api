@@ -1,4 +1,4 @@
-require('dotenv').config({ quiet: true });
+require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
@@ -11,19 +11,23 @@ const accessControlRoutes = require('./routes/accessControlRoutes');
 const laporanController = require('./controllers/laporanController');
 
 const app = express();
+const corsOrigin = process.env.CORS_ORIGIN || 'https://laundry-frontend-app-chl.vercel.app';
 
 app.use(cors({
-    origin: process.env.CORS_ORIGIN || '*',
+    origin: corsOrigin === '*' ? true : corsOrigin,
     credentials: false
 }));
 app.use(express.json());
 
-app.get('/health', (req, res) => {
+function healthHandler(req, res) {
     res.json({
         status: 'SUKSES',
         message: 'Backend Spincycle aktif.'
     });
-});
+}
+
+app.get('/health', healthHandler);
+app.get('/api/health', healthHandler);
 
 app.use('/api/karyawan', authRoutes);
 app.use('/api', authenticateToken);
@@ -361,6 +365,6 @@ app.use((req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server Backend Spincycle berjalan di port ${PORT}`);
 });
