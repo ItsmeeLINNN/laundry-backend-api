@@ -11,6 +11,12 @@ const accessControlRoutes = require('./routes/accessControlRoutes');
 const laporanController = require('./controllers/laporanController');
 
 const app = express();
+const defaultAllowedOrigins = [
+    'https://laundry-frontend-app-chl.vercel.app',
+    'http://localhost',
+    'https://localhost',
+    'capacitor://localhost'
+];
 const allowedOrigins = (process.env.CORS_ORIGIN || '')
     .split(',')
     .map((origin) => origin.trim())
@@ -25,18 +31,24 @@ function isAllowedOrigin(origin) {
         return true;
     }
 
-    if (allowedOrigins.includes(origin)) {
+    if (allowedOrigins.includes(origin) || defaultAllowedOrigins.includes(origin)) {
         return true;
     }
 
     try {
         const url = new URL(origin);
-        return (
+        const isVercel =
             url.hostname.includes('laundry-frontend') &&
-            url.hostname.endsWith('.vercel.app')
-        );
+            url.hostname.endsWith('.vercel.app');
+
+        const isCapacitorLocal =
+            origin === 'http://localhost' ||
+            origin === 'https://localhost' ||
+            origin === 'capacitor://localhost';
+
+        return isVercel || isCapacitorLocal;
     } catch {
-        return false;
+        return origin === 'capacitor://localhost';
     }
 }
 
