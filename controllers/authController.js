@@ -9,24 +9,49 @@ try {
     bcrypt = require('bcrypt');
 }
 
+const LOGIN_ROLES = ['Admin', 'Kasir'];
+const EMPLOYEE_ROLES = ['Admin', 'Kasir', 'Karyawan'];
+
+function query(sql, params = []) {
+    return new Promise((resolve, reject) => {
+        db.query(sql, params, (err, results) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+
+            resolve(results);
+        });
+    });
+}
+
 function cleanText(value) {
     return String(value || '').trim();
 }
 
 function validNama(value) {
-    return /^[A-Za-zÀ-ÿ ]{3,50}$/.test(value);
+    return /^[A-Za-zÀ-ÿ ]{3,100}$/.test(value);
 }
 
 function validUsername(value) {
-    return /^[A-Za-z0-9_]{3,20}$/.test(value);
+    return /^[A-Za-z0-9_]{3,50}$/.test(value);
 }
 
 function validJabatan(value) {
-    return ['Admin', 'Kasir', 'Karyawan', 'Kurir'].includes(value);
+    return EMPLOYEE_ROLES.includes(value);
 }
 
 function validTime(value) {
     return value === null || value === '' || /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+}
+
+function isLoginRole(jabatan) {
+    return LOGIN_ROLES.includes(jabatan);
+}
+
+function normalizePassword(value) {
+    const password = String(value || '');
+    return password.trim() === '' ? null : password;
 }
 
 exports.register = async (req, res) => {
@@ -36,6 +61,7 @@ exports.register = async (req, res) => {
             username,
             password,
             no_telepon,
+            alamat,
             jabatan,
             hari_kerja,
             jam_masuk,
@@ -43,17 +69,19 @@ exports.register = async (req, res) => {
         } = req.body;
 
         const namaClean = cleanText(nama);
+        const jabatanClean = cleanText(jabatan || 'Karyawan');
         const usernameClean = cleanText(username);
-        const jabatanClean = cleanText(jabatan || 'Kasir');
         const noTeleponClean = cleanText(no_telepon);
+        const alamatClean = cleanText(alamat);
         const hariKerjaClean = cleanText(hari_kerja);
         const jamMasukClean = jam_masuk || null;
         const jamPulangClean = jam_pulang || null;
+        const passwordClean = normalizePassword(password);
 
-        if (!namaClean || !usernameClean || !password || !jabatanClean) {
+        if (!namaClean || !jabatanClean) {
             return res.status(400).json({
                 status: 'GAGAL',
-                message: 'Nama, username, password, dan jabatan wajib diisi.'
+                message: 'Nama dan jabatan wajib diisi.'
             });
         }
 
@@ -61,20 +89,6 @@ exports.register = async (req, res) => {
             return res.status(400).json({
                 status: 'GAGAL',
                 message: 'Nama hanya boleh huruf dan spasi, minimal 3 karakter.'
-            });
-        }
-
-        if (!validUsername(usernameClean)) {
-            return res.status(400).json({
-                status: 'GAGAL',
-                message: 'Username hanya boleh huruf, angka, dan underscore, 3-20 karakter.'
-            });
-        }
-
-        if (String(password).length < 8) {
-            return res.status(400).json({
-                status: 'GAGAL',
-                message: 'Password minimal 8 karakter.'
             });
         }
 
@@ -92,128 +106,132 @@ exports.register = async (req, res) => {
             });
         }
 
-        const hashedPassword = await bcrypt.hash(String(password), 10);
+        let usernameForDb = null;
+        let passwordForDb = null;
 
-        const sql = `
+        if (isLoginRole(jabatanClean)) {
+            if (!usernameClean || !passwordClean) {
+                return res.status(400).json({
+                    status: 'GAGAL',
+                    message: 'Admin dan Kasir wajib memiliki username dan password.'
+                });
+            }
+
+            if (!validUsername(usernameClean)) {
+                return res.status(400).json({
+                    status: 'GAGAL',
+                    message: 'Username hanya boleh huruf, angka, dan underscore, 3-50 karakter.'
+                });
+            }
+
+            if (passwordClean.length < 8) {
+                return res.status(400).json({
+                    status: 'GAGAL',
+                    message: 'Password minimal 8 karakter.'
+                });
+            }
+
+            usernameForDb = usernameClean;
+            passwordForDb = await bcrypt.hash(passwordClean, 10);
+        }
+
+        const result = await query(`
             INSERT INTO karyawan
-            (nama, username, password, no_telepon, jabatan, hari_kerja, jam_masuk, jam_pulang, status_aktif)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `;
-
-        const values = [
+                (nama, username, password, no_telepon, alamat, jabatan, hari_kerja, jam_masuk, jam_pulang, status_aktif)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
             namaClean,
-            usernameClean,
-            hashedPassword,
+            usernameForDb,
+            passwordForDb,
             noTeleponClean || null,
+            alamatClean || null,
             jabatanClean,
             hariKerjaClean || null,
             jamMasukClean,
             jamPulangClean,
             1
-        ];
+        ]);
 
-        db.query(sql, values, (err, result) => {
-            if (err) {
-                console.error('Register karyawan error:', err);
-
-                if (err.code === 'ER_DUP_ENTRY') {
-                    return res.status(400).json({
-                        status: 'GAGAL',
-                        message: 'Username sudah digunakan.'
-                    });
-                }
-
-                return res.status(500).json({
-                    status: 'ERROR',
-                    message: 'Gagal mendaftarkan karyawan.'
-                });
+        return res.status(201).json({
+            status: 'SUKSES',
+            message: 'Karyawan berhasil didaftarkan.',
+            data: {
+                id: result.insertId,
+                nama: namaClean,
+                username: usernameForDb,
+                jabatan: jabatanClean
             }
-
-            res.status(201).json({
-                status: 'SUKSES',
-                message: 'Karyawan berhasil didaftarkan.',
-                data: {
-                    id: result.insertId,
-                    nama: namaClean,
-                    username: usernameClean,
-                    jabatan: jabatanClean
-                }
-            });
         });
     } catch (error) {
         console.error('Register karyawan error:', error);
 
-        res.status(500).json({
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(400).json({
+                status: 'GAGAL',
+                message: 'Username sudah digunakan.'
+            });
+        }
+
+        return res.status(500).json({
             status: 'ERROR',
             message: 'Terjadi kesalahan server.'
         });
     }
 };
 
-exports.getKaryawan = (req, res) => {
-    const sql = `
-        SELECT 
-            id,
-            nama,
-            username,
-            no_telepon,
-            jabatan,
-            hari_kerja,
-            jam_masuk,
-            jam_pulang,
-            status_aktif
-        FROM karyawan
-        ORDER BY id DESC
-    `;
+exports.getKaryawan = async (req, res) => {
+    try {
+        const results = await query(`
+            SELECT 
+                id,
+                nama,
+                username,
+                no_telepon,
+                alamat,
+                jabatan,
+                hari_kerja,
+                jam_masuk,
+                jam_pulang,
+                status_aktif
+            FROM karyawan
+            ORDER BY id DESC
+        `);
 
-    db.query(sql, (err, results) => {
-        if (err) {
-            console.error('Get karyawan error:', err);
+        return res.json(results);
+    } catch (error) {
+        console.error('Get karyawan error:', error);
 
-            return res.status(500).json({
-                status: 'ERROR',
-                message: 'Gagal mengambil data karyawan.'
-            });
-        }
-
-        res.json(results);
-    });
-};
-
-exports.login = (req, res) => {
-    const { username, password } = req.body;
-
-    const usernameClean = cleanText(username);
-
-    if (!usernameClean || !password) {
-        return res.status(400).json({
-            status: 'GAGAL',
-            message: 'Username dan password wajib diisi.'
+        return res.status(500).json({
+            status: 'ERROR',
+            message: 'Gagal mengambil data karyawan.'
         });
     }
+};
 
-    const sql = `
-        SELECT 
-            id,
-            nama,
-            username,
-            password,
-            jabatan,
-            status_aktif
-        FROM karyawan
-        WHERE username = ?
-        LIMIT 1
-    `;
+exports.login = async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        const usernameClean = cleanText(username);
 
-    db.query(sql, [usernameClean], async (err, results) => {
-        if (err) {
-            console.error('Login error:', err);
-
-            return res.status(500).json({
-                status: 'ERROR',
-                message: 'Gagal login.'
+        if (!usernameClean || !password) {
+            return res.status(400).json({
+                status: 'GAGAL',
+                message: 'Username dan password wajib diisi.'
             });
         }
+
+        const results = await query(`
+            SELECT 
+                id,
+                nama,
+                username,
+                password,
+                jabatan,
+                status_aktif
+            FROM karyawan
+            WHERE username = ?
+            LIMIT 1
+        `, [usernameClean]);
 
         if (!results || results.length === 0) {
             return res.status(401).json({
@@ -224,6 +242,13 @@ exports.login = (req, res) => {
 
         const user = results[0];
 
+        if (!isLoginRole(user.jabatan)) {
+            return res.status(403).json({
+                status: 'GAGAL',
+                message: 'Karyawan tidak diizinkan login.'
+            });
+        }
+
         if (Number(user.status_aktif) !== 1) {
             return res.status(403).json({
                 status: 'GAGAL',
@@ -231,46 +256,50 @@ exports.login = (req, res) => {
             });
         }
 
-        try {
-            const match = await bcrypt.compare(String(password), user.password);
+        if (!user.password) {
+            return res.status(401).json({
+                status: 'GAGAL',
+                message: 'Username atau password salah.'
+            });
+        }
 
-            if (!match) {
-                return res.status(401).json({
-                    status: 'GAGAL',
-                    message: 'Username atau password salah.'
-                });
-            }
+        const match = await bcrypt.compare(String(password), user.password);
 
-            const token = signPayload({
+        if (!match) {
+            return res.status(401).json({
+                status: 'GAGAL',
+                message: 'Username atau password salah.'
+            });
+        }
+
+        const token = signPayload({
+            id: user.id,
+            nama: user.nama,
+            username: user.username,
+            jabatan: user.jabatan
+        });
+
+        return res.json({
+            status: 'SUKSES',
+            message: 'Login berhasil.',
+            token,
+            data: {
                 id: user.id,
                 nama: user.nama,
                 username: user.username,
                 jabatan: user.jabatan,
-                role: user.jabatan
-            });
+                role: user.jabatan,
+                token
+            }
+        });
+    } catch (error) {
+        console.error('Login error:', error);
 
-            res.json({
-                status: 'SUKSES',
-                message: 'Login berhasil.',
-                token,
-                data: {
-                    id: user.id,
-                    nama: user.nama,
-                    username: user.username,
-                    jabatan: user.jabatan,
-                    role: user.jabatan,
-                    token
-                }
-            });
-        } catch (error) {
-            console.error('Compare password error:', error);
-
-            res.status(500).json({
-                status: 'ERROR',
-                message: 'Gagal memproses login.'
-            });
-        }
-    });
+        return res.status(500).json({
+            status: 'ERROR',
+            message: 'Gagal memproses login.'
+        });
+    }
 };
 
 exports.updateKaryawan = async (req, res) => {
@@ -282,6 +311,7 @@ exports.updateKaryawan = async (req, res) => {
             username,
             password,
             no_telepon,
+            alamat,
             jabatan,
             hari_kerja,
             jam_masuk,
@@ -296,19 +326,30 @@ exports.updateKaryawan = async (req, res) => {
             });
         }
 
+        const existingRows = await query('SELECT id, password FROM karyawan WHERE id = ? LIMIT 1', [id]);
+
+        if (existingRows.length === 0) {
+            return res.status(404).json({
+                status: 'GAGAL',
+                message: 'Karyawan tidak ditemukan.'
+            });
+        }
+
         const namaClean = cleanText(nama);
-        const usernameClean = cleanText(username);
         const jabatanClean = cleanText(jabatan);
+        const usernameClean = cleanText(username);
         const noTeleponClean = cleanText(no_telepon);
+        const alamatClean = cleanText(alamat);
         const hariKerjaClean = cleanText(hari_kerja);
         const jamMasukClean = jam_masuk || null;
         const jamPulangClean = jam_pulang || null;
         const statusAktifValue = status_aktif === false || status_aktif === 0 || status_aktif === '0' ? 0 : 1;
+        const passwordClean = normalizePassword(password);
 
-        if (!namaClean || !usernameClean || !jabatanClean) {
+        if (!namaClean || !jabatanClean) {
             return res.status(400).json({
                 status: 'GAGAL',
-                message: 'Nama, username, dan jabatan wajib diisi.'
+                message: 'Nama dan jabatan wajib diisi.'
             });
         }
 
@@ -316,13 +357,6 @@ exports.updateKaryawan = async (req, res) => {
             return res.status(400).json({
                 status: 'GAGAL',
                 message: 'Nama hanya boleh huruf dan spasi, minimal 3 karakter.'
-            });
-        }
-
-        if (!validUsername(usernameClean)) {
-            return res.status(400).json({
-                status: 'GAGAL',
-                message: 'Username hanya boleh huruf, angka, dan underscore.'
             });
         }
 
@@ -340,132 +374,75 @@ exports.updateKaryawan = async (req, res) => {
             });
         }
 
-        let sql;
-        let values;
+        const assignments = [
+            'nama = ?',
+            'username = ?',
+            'no_telepon = ?',
+            'alamat = ?',
+            'jabatan = ?',
+            'hari_kerja = ?',
+            'jam_masuk = ?',
+            'jam_pulang = ?',
+            'status_aktif = ?'
+        ];
 
-        if (password && String(password).trim() !== '') {
-            if (String(password).length < 8) {
+        const values = [
+            namaClean,
+            null,
+            noTeleponClean || null,
+            alamatClean || null,
+            jabatanClean,
+            hariKerjaClean || null,
+            jamMasukClean,
+            jamPulangClean,
+            statusAktifValue
+        ];
+
+        if (isLoginRole(jabatanClean)) {
+            if (!usernameClean) {
                 return res.status(400).json({
                     status: 'GAGAL',
-                    message: 'Password minimal 8 karakter.'
+                    message: 'Admin dan Kasir wajib memiliki username.'
                 });
             }
 
-            const hashedPassword = await bcrypt.hash(String(password), 10);
+            if (!validUsername(usernameClean)) {
+                return res.status(400).json({
+                    status: 'GAGAL',
+                    message: 'Username hanya boleh huruf, angka, dan underscore, 3-50 karakter.'
+                });
+            }
 
-            sql = `
-                UPDATE karyawan
-                SET 
-                    nama = ?,
-                    username = ?,
-                    password = ?,
-                    no_telepon = ?,
-                    jabatan = ?,
-                    hari_kerja = ?,
-                    jam_masuk = ?,
-                    jam_pulang = ?,
-                    status_aktif = ?
-                WHERE id = ?
-            `;
+            values[1] = usernameClean;
 
-            values = [
-                namaClean,
-                usernameClean,
-                hashedPassword,
-                noTeleponClean || null,
-                jabatanClean,
-                hariKerjaClean || null,
-                jamMasukClean,
-                jamPulangClean,
-                statusAktifValue,
-                id
-            ];
-        } else {
-            sql = `
-                UPDATE karyawan
-                SET 
-                    nama = ?,
-                    username = ?,
-                    no_telepon = ?,
-                    jabatan = ?,
-                    hari_kerja = ?,
-                    jam_masuk = ?,
-                    jam_pulang = ?,
-                    status_aktif = ?
-                WHERE id = ?
-            `;
-
-            values = [
-                namaClean,
-                usernameClean,
-                noTeleponClean || null,
-                jabatanClean,
-                hariKerjaClean || null,
-                jamMasukClean,
-                jamPulangClean,
-                statusAktifValue,
-                id
-            ];
-        }
-
-        db.query(sql, values, (err, result) => {
-            if (err) {
-                console.error('Update karyawan error:', err);
-
-                if (err.code === 'ER_DUP_ENTRY') {
+            if (passwordClean) {
+                if (passwordClean.length < 8) {
                     return res.status(400).json({
                         status: 'GAGAL',
-                        message: 'Username sudah digunakan.'
+                        message: 'Password minimal 8 karakter.'
                     });
                 }
 
-                return res.status(500).json({
-                    status: 'ERROR',
-                    message: 'Gagal mengubah data karyawan.'
-                });
-            }
-
-            if (result.affectedRows === 0) {
-                return res.status(404).json({
+                assignments.push('password = ?');
+                values.push(await bcrypt.hash(passwordClean, 10));
+            } else if (!existingRows[0].password) {
+                return res.status(400).json({
                     status: 'GAGAL',
-                    message: 'Karyawan tidak ditemukan.'
+                    message: 'Admin dan Kasir wajib memiliki password.'
                 });
             }
-
-            res.json({
-                status: 'SUKSES',
-                message: 'Data karyawan berhasil diperbarui.'
-            });
-        });
-    } catch (error) {
-        console.error('Update karyawan error:', error);
-
-        res.status(500).json({
-            status: 'ERROR',
-            message: 'Terjadi kesalahan server.'
-        });
-    }
-};
-
-exports.deleteKaryawan = (req, res) => {
-    const { id } = req.params;
-
-    if (!/^[0-9]+$/.test(String(id))) {
-        return res.status(400).json({
-            status: 'GAGAL',
-            message: 'ID karyawan tidak valid.'
-        });
-    }
-
-    db.query('DELETE FROM karyawan WHERE id = ?', [id], (err, result) => {
-        if (err) {
-            console.error('Delete karyawan error:', err);
-
-            return res.status(500).json({
-                status: 'ERROR',
-                message: 'Gagal menghapus data karyawan.'
-            });
+        } else {
+            assignments.push('password = ?');
+            values.push(null);
         }
+
+        values.push(id);
+
+        const result = await query(`
+            UPDATE karyawan
+            SET ${assignments.join(', ')}
+            WHERE id = ?
+        `, values);
 
         if (result.affectedRows === 0) {
             return res.status(404).json({
@@ -474,9 +451,57 @@ exports.deleteKaryawan = (req, res) => {
             });
         }
 
-        res.json({
+        return res.json({
+            status: 'SUKSES',
+            message: 'Data karyawan berhasil diperbarui.'
+        });
+    } catch (error) {
+        console.error('Update karyawan error:', error);
+
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(400).json({
+                status: 'GAGAL',
+                message: 'Username sudah digunakan.'
+            });
+        }
+
+        return res.status(500).json({
+            status: 'ERROR',
+            message: 'Terjadi kesalahan server.'
+        });
+    }
+};
+
+exports.deleteKaryawan = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!/^[0-9]+$/.test(String(id))) {
+            return res.status(400).json({
+                status: 'GAGAL',
+                message: 'ID karyawan tidak valid.'
+            });
+        }
+
+        const result = await query('DELETE FROM karyawan WHERE id = ?', [id]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                status: 'GAGAL',
+                message: 'Karyawan tidak ditemukan.'
+            });
+        }
+
+        return res.json({
             status: 'SUKSES',
             message: 'Karyawan berhasil dihapus.'
         });
-    });
+    } catch (error) {
+        console.error('Delete karyawan error:', error);
+
+        return res.status(500).json({
+            status: 'ERROR',
+            message: 'Gagal menghapus data karyawan.'
+        });
+    }
 };

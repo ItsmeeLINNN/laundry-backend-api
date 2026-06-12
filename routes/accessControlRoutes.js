@@ -5,6 +5,6 @@ const { requireRole } = require('../middleware/authMiddleware');
 
 router.get('/me', accessControlController.checkMyAccess);
 router.get('/', requireRole('Admin'), accessControlController.listAccess);
-router.put('/:role/:page_key', requireRole('Admin'), accessControlController.updateAccess);
+router.put('/:role/:feature_key', requireRole('Admin'), accessControlController.updateAccess);
 
 module.exports = router;
