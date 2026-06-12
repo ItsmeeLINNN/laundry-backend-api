@@ -1,40 +1,38 @@
-require('dotenv').config({ quiet: true });
-
 const mysql = require('mysql2');
+require('dotenv').config();
 
-function readEnv(primaryName, fallbackName) {
-    return process.env[primaryName] || process.env[fallbackName] || '';
-}
+const missingMessage = 'Environment database belum lengkap. Isi DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, dan DB_PORT di Railway Backend Variables. DB_PASSWORD tidak boleh kosong.';
 
 const dbConfig = {
-    host: readEnv('DB_HOST', 'MYSQLHOST'),
-    user: readEnv('DB_USER', 'MYSQLUSER'),
-    password: readEnv('DB_PASSWORD', 'MYSQLPASSWORD'),
-    database: readEnv('DB_NAME', 'MYSQLDATABASE'),
-    port: Number(readEnv('DB_PORT', 'MYSQLPORT')),
+    host: process.env.DB_HOST || process.env.MYSQLHOST,
+    user: process.env.DB_USER || process.env.MYSQLUSER,
+    password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD,
+    database: process.env.DB_NAME || process.env.MYSQLDATABASE,
+    port: Number(process.env.DB_PORT || process.env.MYSQLPORT),
     waitForConnections: true,
     connectionLimit: Number(process.env.DB_CONNECTION_LIMIT || 10),
     queueLimit: 0
 };
 
-const requiredFields = [
-    ['host', 'DB_HOST atau MYSQLHOST wajib diisi di Railway Backend Variables.'],
-    ['user', 'DB_USER atau MYSQLUSER wajib diisi di Railway Backend Variables.'],
-    ['database', 'DB_NAME atau MYSQLDATABASE wajib diisi di Railway Backend Variables.']
+const required = [
+    ['DB_HOST/MYSQLHOST', dbConfig.host],
+    ['DB_USER/MYSQLUSER', dbConfig.user],
+    ['DB_PASSWORD/MYSQLPASSWORD', dbConfig.password],
+    ['DB_NAME/MYSQLDATABASE', dbConfig.database],
+    ['DB_PORT/MYSQLPORT', dbConfig.port]
 ];
 
-requiredFields.forEach(([field, message]) => {
-    if (!dbConfig[field]) {
-        throw new Error(message);
+function isMissing(name, value) {
+    if (name === 'DB_PASSWORD/MYSQLPASSWORD') {
+        return value === undefined || value === null || String(value).trim() === '';
     }
-});
-
-if (!dbConfig.password) {
-    throw new Error('DB_PASSWORD wajib diisi di Railway Backend Variables.');
+    return value === undefined || value === null || value === '' || Number.isNaN(value);
 }
 
-if (!Number.isInteger(dbConfig.port) || dbConfig.port <= 0) {
-    throw new Error('DB_PORT atau MYSQLPORT wajib berisi angka port database yang valid.');
+for (const [name, value] of required) {
+    if (isMissing(name, value)) {
+        throw new Error(`${missingMessage} Missing: ${name}`);
+    }
 }
 
 if (!Number.isInteger(dbConfig.connectionLimit) || dbConfig.connectionLimit <= 0) {
@@ -45,7 +43,7 @@ const db = mysql.createPool(dbConfig);
 
 db.getConnection((err, connection) => {
     if (err) {
-        console.error('Gagal terhubung ke MySQL:', err.message);
+        console.error('Gagal koneksi ke MySQL Database:', err.message);
         return;
     }
 

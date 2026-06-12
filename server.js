@@ -21,8 +21,9 @@ app.use(express.json());
 
 function healthHandler(req, res) {
     res.json({
-        status: 'SUKSES',
-        message: 'Backend Spincycle aktif.'
+        success: true,
+        message: 'Backend aktif',
+        timestamp: new Date().toISOString()
     });
 }
 
