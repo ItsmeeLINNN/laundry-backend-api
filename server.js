@@ -11,12 +11,49 @@ const accessControlRoutes = require('./routes/accessControlRoutes');
 const laporanController = require('./controllers/laporanController');
 
 const app = express();
-const corsOrigin = process.env.CORS_ORIGIN || 'https://laundry-frontend-app-chl.vercel.app';
+const allowedOrigins = (process.env.CORS_ORIGIN || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
 
-app.use(cors({
-    origin: corsOrigin === '*' ? true : corsOrigin,
+function isAllowedOrigin(origin) {
+    if (!origin) {
+        return true;
+    }
+
+    if (allowedOrigins.includes('*')) {
+        return true;
+    }
+
+    if (allowedOrigins.includes(origin)) {
+        return true;
+    }
+
+    try {
+        const url = new URL(origin);
+        return (
+            url.hostname.includes('laundry-frontend') &&
+            url.hostname.endsWith('.vercel.app')
+        );
+    } catch {
+        return false;
+    }
+}
+
+const corsOptions = {
+    origin(origin, callback) {
+        if (isAllowedOrigin(origin)) {
+            return callback(null, true);
+        }
+
+        return callback(new Error('Origin tidak diizinkan oleh CORS: ' + origin));
+    },
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
     credentials: false
-}));
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 function healthHandler(req, res) {
